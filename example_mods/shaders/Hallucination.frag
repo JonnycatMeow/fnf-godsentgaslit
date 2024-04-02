@@ -1,15 +1,63 @@
+// Automatically converted with https://github.com/TheLeerName/ShadertoyToFlixel
+
 #pragma header
+
+#define round(a) floor(a + 0.5)
+#define iResolution vec3(openfl_TextureSize, 0.)
 uniform float iTime;
+#define iChannel0 bitmap
+uniform sampler2D iChannel1;
+uniform sampler2D iChannel2;
+uniform sampler2D iChannel3;
+#define texture flixel_texture2D
 
-#define Strength 0.003f
-#define Speed 0.6f
+// third argument fix
+vec4 flixel_texture2D(sampler2D bitmap, vec2 coord, float bias) {
+	vec4 color = texture2D(bitmap, coord, bias);
+	if (!hasTransform)
+	{
+		return color;
+	}
+	if (color.a == 0.0)
+	{
+		return vec4(0.0, 0.0, 0.0, 0.0);
+	}
+	if (!hasColorTransform)
+	{
+		return color * openfl_Alphav;
+	}
+	color = vec4(color.rgb / color.a, color.a);
+	mat4 colorMultiplier = mat4(0);
+	colorMultiplier[0][0] = openfl_ColorMultiplierv.x;
+	colorMultiplier[1][1] = openfl_ColorMultiplierv.y;
+	colorMultiplier[2][2] = openfl_ColorMultiplierv.z;
+	colorMultiplier[3][3] = openfl_ColorMultiplierv.w;
+	color = clamp(openfl_ColorOffsetv + (color * colorMultiplier), 0.0, 1.0);
+	if (color.a > 0.0)
+	{
+		return vec4(color.rgb * color.a * openfl_Alphav, color.a * openfl_Alphav);
+	}
+	return vec4(0.0, 0.0, 0.0, 0.0);
+}
 
-#define NoiseTiling 8.0f
-#define NoiseSpeed 0.5f
+// variables which is empty, they need just to avoid crashing shader
+uniform float iTimeDelta;
+uniform float iFrameRate;
+uniform int iFrame;
+#define iChannelTime float[4](iTime, 0., 0., 0.)
+#define iChannelResolution vec3[4](iResolution, vec3(0.), vec3(0.), vec3(0.))
+uniform vec4 iMouse;
+uniform vec4 iDate;
 
-#define PulseSpeed 2.0f
-#define PulseMin 1.0f
-#define PulseMax 2.0f
+#define Strength 0.003
+#define Speed 0.6
+
+#define NoiseTiling 8.0
+#define NoiseSpeed 0.5
+
+#define PulseSpeed 2.0
+#define PulseMin 1.0
+#define PulseMax 2.0
 
 #define M_PI 3.1415926535897932384626433832795
 
@@ -26,7 +74,7 @@ vec3 hash( vec3 p ) // replace this by something better. really. do
 }
 
 // return value noise (in x) and its derivatives (in yzw)
-vec4 noised(vec3 x )
+vec4 noised( in vec3 x )
 {
     // grid
     vec3 i = floor(x);
@@ -85,9 +133,9 @@ vec2 GetVector(vec2 v, float rad, float noise) {
     return v_rot;
 }
 
-void main() {
+void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
     // define the UVs, make them square by using the same iRes dimension
-	vec2 uv = openfl_TextureCoordv;
+	vec2 uv = fragCoord.xy/iResolution.xy;
     
     float mixer = 1.;
     //mixer = 1.-smoothstep(0.,1., (sin(iTime)+2.)/2.-1.)*2.; // uncomment this to animate the effect
@@ -104,7 +152,7 @@ void main() {
    	vec2 vec = vec2(1.,0.); // initial vector, this is to be rotated like the dial of a clock
 
     // generate some noise to scale vector
-    vec2 p = (-openfl_TextureCoordv.xy + 2.0*gl_FragCoord) / openfl_TextureCoordv.y * NoiseTiling;
+    vec2 p = (-iResolution.xy + 2.0*fragCoord) / iResolution.y * NoiseTiling;
     vec4 n = noised(vec3(p.x, p.y, iTime * NoiseSpeed));
     n.x = (n.x + 1.) / 2.; // normalize 0-1
     //n.x = pow(n.x, 1.5);
@@ -118,9 +166,13 @@ void main() {
     vec2 b_shift = v_b * shift_amount;
 	
     vec3 clr;
-    clr.r = texture2D(bitmap, uv + vec2(r_shift.x, r_shift.y)).r;
-    clr.g = texture2D(bitmap, uv + vec2(g_shift.x, g_shift.y)).g;
-   	clr.b = texture2D(bitmap, uv + vec2(b_shift.x, b_shift.y)).b;
+    clr.r = texture(iChannel0, uv + vec2(r_shift.x, r_shift.y)).r;
+    clr.g = texture(iChannel0, uv + vec2(g_shift.x, g_shift.y)).g;
+   	clr.b = texture(iChannel0, uv + vec2(b_shift.x, b_shift.y)).b;
     
-    gl_FragColor = vec4(clr,texture2D(bitmap, uv).a);   
+    fragColor = vec4(clr,texture(iChannel0, uv).a);   
+}
+
+void main() {
+	mainImage(gl_FragColor, openfl_TextureCoordv*openfl_TextureSize);
 }

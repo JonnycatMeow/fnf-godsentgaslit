@@ -1,7 +1,64 @@
+// Automatically converted with https://github.com/TheLeerName/ShadertoyToFlixel
+
 #pragma header
 
+#define round(a) floor(a + 0.5)
+#define iResolution vec3(openfl_TextureSize, 0.)
 uniform float iTime;
+#define iChannel0 bitmap
+uniform sampler2D iChannel1;
+uniform sampler2D iChannel2;
+uniform sampler2D iChannel3;
+#define texture flixel_texture2D
 
+// third argument fix
+vec4 flixel_texture2D(sampler2D bitmap, vec2 coord, float bias) {
+	vec4 color = texture2D(bitmap, coord, bias);
+	if (!hasTransform)
+	{
+		return color;
+	}
+	if (color.a == 0.0)
+	{
+		return vec4(0.0, 0.0, 0.0, 0.0);
+	}
+	if (!hasColorTransform)
+	{
+		return color * openfl_Alphav;
+	}
+	color = vec4(color.rgb / color.a, color.a);
+	mat4 colorMultiplier = mat4(0);
+	colorMultiplier[0][0] = openfl_ColorMultiplierv.x;
+	colorMultiplier[1][1] = openfl_ColorMultiplierv.y;
+	colorMultiplier[2][2] = openfl_ColorMultiplierv.z;
+	colorMultiplier[3][3] = openfl_ColorMultiplierv.w;
+	color = clamp(openfl_ColorOffsetv + (color * colorMultiplier), 0.0, 1.0);
+	if (color.a > 0.0)
+	{
+		return vec4(color.rgb * color.a * openfl_Alphav, color.a * openfl_Alphav);
+	}
+	return vec4(0.0, 0.0, 0.0, 0.0);
+}
+
+// variables which is empty, they need just to avoid crashing shader
+uniform float iTimeDelta;
+uniform float iFrameRate;
+uniform int iFrame;
+#define iChannelTime float[4](iTime, 0., 0., 0.)
+#define iChannelResolution vec3[4](iResolution, vec3(0.), vec3(0.), vec3(0.))
+uniform vec4 iMouse;
+uniform vec4 iDate;
+
+//
+// Description : Array and textureless GLSL 2D simplex noise function.
+//      Author : Ian McEwan, Ashima Arts.
+//  Maintainer : stegu
+//     Lastmod : 20110822 (ijm)
+//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+//               Distributed under the MIT License. See LICENSE file.
+//               https://github.com/ashima/webgl-noise
+//               https://github.com/stegu/webgl-noise
+// 
 
 vec3 mod289(vec3 x) {
   return x - floor(x * (1.0 / 289.0)) * 289.0;
@@ -70,9 +127,9 @@ float rand(vec2 co)
 }
 
 
-void main()
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-	  vec2 uv = openfl_TextureCoordv;    
+	vec2 uv = fragCoord.xy / iResolution.xy;    
     float time = iTime * 2.0;
     
     // Create large, incidental noise waves
@@ -83,18 +140,22 @@ void main()
     
     // Apply the noise as x displacement for every line
     float xpos = uv.x - noise * noise * 0.25;
-	  gl_FragColor = texture2D(bitmap, vec2(xpos, uv.y));
+	fragColor = texture(iChannel0, vec2(xpos, uv.y));
     
     // Mix in some random interference for lines
-    gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(rand(vec2(uv.y * time))), noise * 0.3).rgb;
+    fragColor.rgb = mix(fragColor.rgb, vec3(rand(vec2(uv.y * time))), noise * 0.3).rgb;
     
     // Apply a line pattern every 4 pixels
-    if (floor(mod(gl_FragCoord.y * 0.25, 2.0)) == 0.0)
+    if (floor(mod(fragCoord.y * 0.25, 2.0)) == 0.0)
     {
-        gl_FragColor.rgb *= 1.0 - (0.15 * noise);
+        fragColor.rgb *= 1.0 - (0.15 * noise);
     }
     
     // Shift green/blue channels (using the red channel)
-    gl_FragColor.g = mix(gl_FragColor.r, texture2D(bitmap, vec2(xpos + noise * 0.05, uv.y)).g, 0.25);
-    gl_FragColor.b = mix(gl_FragColor.r, texture2D(bitmap, vec2(xpos - noise * 0.05, uv.y)).b, 0.25);
+    fragColor.g = mix(fragColor.r, texture(iChannel0, vec2(xpos + noise * 0.05, uv.y)).g, 0.25);
+    fragColor.b = mix(fragColor.r, texture(iChannel0, vec2(xpos - noise * 0.05, uv.y)).b, 0.25);
+}
+
+void main() {
+	mainImage(gl_FragColor, openfl_TextureCoordv*openfl_TextureSize);
 }
