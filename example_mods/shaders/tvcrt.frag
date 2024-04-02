@@ -2,14 +2,7 @@
 
 #pragma header
 
-#define round(a) floor(a + 0.5)
-#define texture flixel_texture2D
-#define iResolution openfl_TextureSize
 uniform float iTime;
-#define iChannel0 bitmap
-uniform sampler2D iChannel1;
-uniform sampler2D iChannel2;
-uniform sampler2D iChannel3;
 
 vec2 curve(vec2 uv)
 {
@@ -22,18 +15,18 @@ vec2 curve(vec2 uv)
 	return uv;
 }
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
+void main()
 {
     //Curve
-    vec2 uv = fragCoord.xy / iResolution.xy;
+    vec2 uv = openfl_TextureCoordv;
 	uv = curve( uv );
     
     vec3 col;
 
     // Chromatic
-    col.r = texture(iChannel0,vec2(uv.x+0.003,uv.y)).x;
-    col.g = texture(iChannel0,vec2(uv.x+0.000,uv.y)).y;
-    col.b = texture(iChannel0,vec2(uv.x-0.003,uv.y)).z;
+    col.r = texture2D(bitmap,vec2(uv.x+0.003,uv.y)).x;
+    col.g = texture2D(bitmap,vec2(uv.x+0.000,uv.y)).y;
+    col.b = texture2D(bitmap,vec2(uv.x-0.003,uv.y)).z;
 
     col *= step(0.0, uv.x) * step(0.0, uv.y);
     col *= 1.0 - step(1.0, uv.x) * 1.0 - step(1.0, uv.y);
@@ -45,9 +38,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
     col *= 0.99+0.01*sin(110.0*iTime);
 
-    fragColor = vec4(col,texture(iChannel0, uv).a);
-}
-
-void main() {
-	mainImage(gl_FragColor, openfl_TextureCoordv*openfl_TextureSize);
+    fragColor = vec4(col,texture2D(bitmap, uv).a);
 }
